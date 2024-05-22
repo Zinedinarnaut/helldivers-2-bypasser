@@ -1,5 +1,8 @@
-﻿using System.Diagnostics;
+﻿using System;
+using System.Diagnostics;
+using System.IO;
 using System.Runtime.InteropServices;
+using System.Threading;
 
 namespace HD2_GGKiller
 {
@@ -18,7 +21,7 @@ namespace HD2_GGKiller
         private static extern void CloseHandle(IntPtr hObject);
 
         static readonly string game_name = "helldivers2";
-        static readonly string game_start_cmd = "steam://rungameid/553850";
+        static readonly string steam_app_id = "553850";
         static readonly int gg_init_error_offset = 0x49EAE;
         static readonly int gg_stdown_error_offset = 0x49F52;
         static readonly byte[] check_mem = new byte[] { 0x0F, 0x85, 0xC1, 0x00, 0x00, 0x00 };
@@ -30,6 +33,15 @@ namespace HD2_GGKiller
 
         static void Main(string[] args)
         {
+            string gameDirectory = FindGameDirectory();
+            if (string.IsNullOrEmpty(gameDirectory))
+            {
+                Console.WriteLine("Could not find the game directory.");
+                return;
+            }
+
+            Console.WriteLine($"Found game directory: {gameDirectory}");
+
             #region Find Process
             Console.WriteLine("===Find Process===");
             Console.WriteLine("Searching for the game process");
@@ -46,6 +58,7 @@ namespace HD2_GGKiller
             #region Start Process
             Console.WriteLine("===Start Process===");
             Console.WriteLine("Starting the process via Steam");
+            StartSteamGame();
             Console.WriteLine("Start request sent");
             processes = Process.GetProcessesByName(game_name);
             Console.WriteLine("Waiting for the game to start");
@@ -81,6 +94,57 @@ namespace HD2_GGKiller
 #if DEBUG
             while (true) Thread.Sleep(2000);
 #endif
+        }
+
+        static string FindGameDirectory()
+        {
+            foreach (var drive in DriveInfo.GetDrives())
+            {
+                if (drive.DriveType == DriveType.Fixed || drive.DriveType == DriveType.Removable)
+                {
+                    string gamePath = Path.Combine(drive.RootDirectory.FullName, "SteamLibrary", "steamapps", "common", "Helldivers 2", "bin");
+                    if (Directory.Exists(gamePath))
+                    {
+                        return gamePath;
+                    }
+                }
+            }
+            return null;
+        }
+
+        static void StartSteamGame()
+        {
+            string steamPath = FindSteamExecutable();
+            if (string.IsNullOrEmpty(steamPath))
+            {
+                Console.WriteLine("Could not find Steam executable.");
+                return;
+            }
+
+            try
+            {
+                Process.Start(steamPath, $"-applaunch {steam_app_id}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error starting Steam game: {ex.Message}");
+            }
+        }
+
+        static string? FindSteamExecutable()
+        {
+            foreach (var drive in DriveInfo.GetDrives())
+            {
+                if (drive.DriveType == DriveType.Fixed || drive.DriveType == DriveType.Removable)
+                {
+                    string steamPath = Path.Combine(drive.RootDirectory.FullName, "Program Files (x86)", "Steam", "steam.exe");
+                    if (File.Exists(steamPath))
+                    {
+                        return steamPath;
+                    }
+                }
+            }
+            return null;
         }
 
         static bool CheckHD2Memory()
@@ -161,13 +225,12 @@ namespace HD2_GGKiller
             {
                 IntPtr byteAddress = Marshal.UnsafeAddrOfPinnedArrayElement(memoryBytes, 0);
                 IntPtr hProcess = OpenProcess(0x1F0FFF, false, processId);
-                Console.WriteLine("Base address: 0x{0:X}", processes[0].MainModule.BaseAddress.ToInt64() + 0x1000);
-                IntPtr address = processes[0].MainModule.BaseAddress + 0x1000 + offsetAddress;
-                Console.WriteLine("Offset address: 0x{0:X}", address.ToInt64());
-                bool r = ReadProcessMemory(hProcess, address, byteAddress, size, IntPtr.Zero);
+                IntPtr baseAddress = processes[0].MainModule.BaseAddress;
+                IntPtr address = baseAddress + offsetAddress;
+                bool result = ReadProcessMemory(hProcess, address, byteAddress, size, IntPtr.Zero);
                 CloseHandle(hProcess);
 
-                return true;
+                return result;
             }
             catch (Exception ex)
             {
@@ -193,12 +256,11 @@ namespace HD2_GGKiller
             try
             {
                 IntPtr hProcess = OpenProcess(0x1F0FFF, false, processId);
-                Console.WriteLine("Base address: 0x{0:X}", processes[0].MainModule.BaseAddress.ToInt64() + 0x1000);
-                IntPtr address = processes[0].MainModule.BaseAddress + 0x1000 + offsetAddress;
-                Console.WriteLine("Offset address: 0x{0:X}", address.ToInt64());
-                WriteProcessMemory(hProcess, address, memoryBytes, memoryBytes.Length, IntPtr.Zero);
+                IntPtr baseAddress = processes[0].MainModule.BaseAddress;
+                IntPtr address = baseAddress + offsetAddress;
+                bool result = WriteProcessMemory(hProcess, address, memoryBytes, memoryBytes.Length, IntPtr.Zero);
                 CloseHandle(hProcess);
-                return true;
+                return result;
             }
             catch (Exception ex)
             {
