@@ -1,4 +1,4 @@
-# HD2_GGKiller: Helldivers 2 GameGuard Bypass Tool
+# HD2_GGKiller: Helldivers 2 GameGuard Bypass Tool (Discontinued)
 
 ## Overview
 HD2_GGKiller is a bypass program for Helldivers 2 that allows you to start the game without GameGuard. This is not a cheat tool, but a bypass tool that enables you to enjoy the game without the GameGuard protection.
@@ -25,7 +25,7 @@ HD2_GGKiller is a bypass program for Helldivers 2 that allows you to start the g
    - Go to the "Local Files" tab and click "Browse". This will open the game's installation directory.
 
 3. **Backup GameGuard Files**
-   - Navigate to the `../Helldivers 2/bin` directory within the game’s installation folder.
+   - Navigate to the `../Helldivers 2/bin` directory within the gameâ€™s installation folder.
    - You will see a folder named `GameGuard` and a file named `GameGuard.des`.
    - Rename these files to something else to keep backups, or delete them if you prefer.
 
